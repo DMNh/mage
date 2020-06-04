@@ -63,7 +63,7 @@ class NacatlWarPrideEffect extends OneShotEffect {
 
     public NacatlWarPrideEffect() {
         super(Outcome.Benefit);
-        this.staticText = "create X tokens that are copies of Nacatl War-Pride tapped and attacking, where X is the number of creatures defending player controls. Exile the tokens at the beginning of the next end step.";
+        this.staticText = "create X tokens that are copies of {this} tapped and attacking, where X is the number of creatures defending player controls. Exile the tokens at the beginning of the next end step";
     }
 
     public NacatlWarPrideEffect(final NacatlWarPrideEffect effect) {
@@ -103,7 +103,7 @@ class NacatlWarPrideEffect extends OneShotEffect {
         if (!copies.isEmpty()) {
             FixedTargets fixedTargets = new FixedTargets(copies, game);
             ExileTargetEffect exileEffect = new ExileTargetEffect();
-            exileEffect.setTargetPointer(fixedTargets);
+            exileEffect.setTargetPointer(fixedTargets).setText("exile the tokens");
             game.addDelayedTriggeredAbility(new AtTheBeginOfNextEndStepDelayedTriggeredAbility(exileEffect), source);
             return true;
         }

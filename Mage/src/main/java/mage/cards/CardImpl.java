@@ -14,6 +14,7 @@ import mage.ObjectColor;
 import mage.abilities.*;
 import mage.abilities.hint.Hint;
 import mage.abilities.hint.HintUtils;
+import mage.abilities.keyword.FlashbackAbility;
 import mage.abilities.mana.ActivatedManaAbilityImpl;
 import mage.cards.repository.PluginClassloaderRegistery;
 import mage.constants.*;
@@ -285,7 +286,7 @@ public abstract class CardImpl extends MageObjectImpl implements Card {
 
     /**
      * Gets all current abilities - includes additional abilities added by other
-     * cards or effects
+     * cards or effects. Warning, you can't modify that list.
      *
      * @param game
      * @return A list of {@link Ability} - this collection is not modifiable
@@ -295,15 +296,38 @@ public abstract class CardImpl extends MageObjectImpl implements Card {
         if (game == null) {
             return abilities; // deck editor with empty game
         }
+
         CardState cardState = game.getState().getCardState(this.getId());
-        if (!cardState.hasLostAllAbilities() && (cardState.getAbilities() == null || cardState.getAbilities().isEmpty())) {
+        if (cardState == null) {
             return abilities;
         }
+
+        // collects all abilities
         Abilities<Ability> all = new AbilitiesImpl<>();
+
+        // basic
         if (!cardState.hasLostAllAbilities()) {
             all.addAll(abilities);
         }
+
+        // dynamic
         all.addAll(cardState.getAbilities());
+
+        // workaround to add dynamic flashback ability from main card to all parts (example: Snapcaster Mage gives flashback to split card)
+        if (!this.getId().equals(this.getMainCard().getId())) {
+            CardState mainCardState = game.getState().getCardState(this.getMainCard().getId());
+            if (mainCardState != null
+                    && !mainCardState.hasLostAllAbilities()
+                    && mainCardState.getAbilities().containsClass(FlashbackAbility.class)) {
+                FlashbackAbility flash = new FlashbackAbility(this.getManaCost(), this.isInstant() ? TimingRule.INSTANT : TimingRule.SORCERY);
+                flash.setSourceId(this.getId());
+                flash.setControllerId(this.getOwnerId());
+                flash.setSpellAbilityType(this.getSpellAbility().getSpellAbilityType());
+                flash.setAbilityName(this.getName());
+                all.add(flash);
+            }
+        }
+
         return all;
     }
 
@@ -312,6 +336,12 @@ public abstract class CardImpl extends MageObjectImpl implements Card {
         CardState cardState = game.getState().getCardState(this.getId());
         cardState.setLostAllAbilities(true);
         cardState.getAbilities().clear();
+    }
+
+    @Override
+    public boolean hasAbility(Ability ability, Game game) {
+        // getAbilities(game) searches all abilities from base and dynamic lists (other)
+        return this.getAbilities(game).contains(ability);
     }
 
     /**
